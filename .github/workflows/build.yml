@@ -1,0 +1,186 @@
+name: iPhone 3G 4.2.1 - VNC noVNC Bore
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  iphone3g:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            libfdt-dev \
+            libglib2.0-dev \
+            libgnutls28-dev \
+            libpixman-1-dev \
+            ninja-build \
+            pkg-config \
+            python3-venv \
+            unzip \
+            curl \
+            novnc \
+            websockify
+
+      - name: Python environment
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install --upgrade pip
+          if [ -f scripts/ios/requirements.txt ]; then
+            .venv/bin/pip install -r scripts/ios/requirements.txt
+          fi
+
+      - name: Configure QEMU
+        run: |
+          ./configure \
+            --target-list=arm-softmmu \
+            --disable-docs \
+            --disable-werror \
+            --enable-gnutls \
+            --python="$PWD/.venv/bin/python"
+
+      - name: Build QEMU
+        run: |
+          make -j"$(nproc)" qemu-system-arm
+
+      - name: iPhone 3G tests
+        run: |
+          make -C build iphone3g-test
+
+      - name: Prepare iPhone 3G
+        run: |
+          make -C build iphone3g-prepare
+
+      - name: Start QEMU
+        run: |
+          mkdir -p .artifacts/runs/iphone3g
+
+          nohup make -C build iphone3g-qemu \
+            IPHONE3G_DISPLAY='vnc=:0' \
+            IPHONE3G_TCG_THREAD=single \
+            > .artifacts/runs/iphone3g/qemu.log 2>&1 &
+
+          echo $! > .artifacts/runs/iphone3g/qemu-wrapper.pid
+
+      - name: Wait for QEMU
+        run: |
+          for i in $(seq 1 600); do
+            if [ -S .artifacts/runs/iphone3g/monitor.sock ]; then
+              echo "QEMU monitor ready"
+              break
+            fi
+            sleep 1
+          done
+
+          test -S .artifacts/runs/iphone3g/monitor.sock
+
+      - name: Start noVNC
+        run: |
+          nohup websockify \
+            --web=/usr/share/novnc \
+            6080 \
+            127.0.0.1:5900 \
+            > .artifacts/runs/iphone3g/novnc.log 2>&1 &
+
+          sleep 3
+
+          curl -f http://127.0.0.1:6080/
+
+      - name: Download Bore
+        run: |
+          curl -L \
+            https://github.com/ekzhang/bore/releases/latest/download/bore-v0.6.0-x86_64-unknown-linux-musl.tar.gz \
+            -o /tmp/bore.tar.gz
+
+          tar -xzf /tmp/bore.tar.gz -C /tmp
+
+          chmod +x /tmp/bore
+
+      - name: Start Bore tunnel
+        run: |
+          nohup /tmp/bore local 6080 \
+            --to bore.pub \
+            > .artifacts/runs/iphone3g/bore.log 2>&1 &
+
+          for i in $(seq 1 30); do
+            if grep -Eo 'bore\.pub:[0-9]+' \
+              .artifacts/runs/iphone3g/bore.log; then
+              break
+            fi
+            sleep 1
+          done
+
+          cat .artifacts/runs/iphone3g/bore.log
+
+      - name: Boot iOS 4.2.1
+        run: |
+          make -C build iphone3g-boot-installed \
+            > .artifacts/runs/iphone3g/boot.log 2>&1 &
+
+          echo $! > .artifacts/runs/iphone3g/boot-wrapper.pid
+
+      - name: Show noVNC URL
+        run: |
+          sleep 5
+
+          echo
+          echo "========================================"
+          echo "       iPhone 3G noVNC"
+          echo "========================================"
+          echo
+
+          cat .artifacts/runs/iphone3g/bore.log
+
+          echo
+          echo "Abra no navegador:"
+          echo "http://<BORE_HOST>:<BORE_PORT>/vnc.html?autoconnect=true&resize=scale"
+          echo
+
+      - name: Keep runner alive
+        run: |
+          for i in $(seq 1 21000); do
+            if [ -f .artifacts/runs/iphone3g/qemu.pid ]; then
+              pid=$(cat .artifacts/runs/iphone3g/qemu.pid)
+
+              if ! kill -0 "$pid" 2>/dev/null; then
+                echo "QEMU stopped"
+                break
+              fi
+            fi
+
+            sleep 1
+          done
+
+      - name: Collect logs
+        if: always()
+        run: |
+          echo "===== QEMU ====="
+          tail -n 300 .artifacts/runs/iphone3g/qemu.log 2>/dev/null || true
+
+          echo "===== BOOT ====="
+          tail -n 300 .artifacts/runs/iphone3g/boot.log 2>/dev/null || true
+
+          echo "===== UART ====="
+          tail -n 300 .artifacts/runs/iphone3g/uart0.log 2>/dev/null || true
+
+          echo "===== Bore ====="
+          cat .artifacts/runs/iphone3g/bore.log 2>/dev/null || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: iphone3g-8C148-vnc-novnc-bore
+          path: .artifacts/runs/iphone3g/
+          if-no-files-found: warn
+          retention-days: 7
