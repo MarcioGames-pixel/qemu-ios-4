@@ -57,6 +57,11 @@ jobs:
         run: |
           make -C build iphone3g-test
 
+      - name: Fetch iPhone 3G firmware
+        run: |
+          chmod +x scripts/ios/fetch-firmware.sh
+          scripts/ios/fetch-firmware.sh
+
       - name: Prepare iPhone 3G
         run: |
           make -C build iphone3g-prepare
