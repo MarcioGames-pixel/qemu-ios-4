@@ -59,6 +59,7 @@ struct IPhone3GSMachineState {
     char *nor_path;
     char *nor_rw_path;
     DeviceState *vic[IPHONE3GS_VIC_COUNT];
+    DeviceState *pmgr;
 };
 
 static void iphone3gs_load_bootrom(IPhone3GSMachineState *s,
@@ -126,11 +127,9 @@ static void iphone3gs_init(MachineState *machine)
     /* PMGR supplies the 24 MHz timebase and two event timers used by the
      * S5L8920 family. Timer IRQ wiring awaits the real interrupt-controller
      * model, but the counter and event registers are now functional. */
-    {
-        DeviceState *pmgr = qdev_new("s5l8920.pmgr");
-        sysbus_realize_and_unref(SYS_BUS_DEVICE(pmgr), &error_fatal);
-        sysbus_mmio_map(SYS_BUS_DEVICE(pmgr), 0, IPHONE3GS_PMGR_BASE);
-    }
+    s->pmgr = qdev_new("s5l8920.pmgr");
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(s->pmgr), &error_fatal);
+    sysbus_mmio_map(SYS_BUS_DEVICE(s->pmgr), 0, IPHONE3GS_PMGR_BASE);
 
     /*
      * SPI0 drives the N88AP 1 MiB NOR flash. The SPI/NOR models implement
@@ -166,6 +165,17 @@ static void iphone3gs_init(MachineState *machine)
                        qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_FIQ));
     qdev_connect_gpio_out(s->vic[1], 0, qdev_get_gpio_in(s->vic[0], 31));
     qdev_connect_gpio_out(s->vic[2], 0, qdev_get_gpio_in(s->vic[1], 31));
+
+    /*
+     * Public S5L8920 reference assigns PMGR event timer 0 to AP IRQ 6 and
+     * timer 1 to IOP IRQ 5. Route both outputs into the first VIC. This only
+     * connects the modeled timer outputs; it does not imply that the VIC's
+     * PL192 behavior or every interrupt number has been validated.
+     */
+    sysbus_connect_irq(SYS_BUS_DEVICE(s->pmgr), 0,
+                       qdev_get_gpio_in(s->vic[0], 6));
+    sysbus_connect_irq(SYS_BUS_DEVICE(s->pmgr), 1,
+                       qdev_get_gpio_in(s->vic[0], 5));
 
     /*
      * Keep unimplemented traps away from mapped devices. Most peripheral
