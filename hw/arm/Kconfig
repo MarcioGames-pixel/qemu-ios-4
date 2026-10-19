@@ -79,6 +79,12 @@ config INTEGRATOR
     select PL181 # display
     select SMC91C111
 
+config IPHONE3GS
+    bool
+    default y
+    depends on TCG && ARM
+    select UNIMP
+
 config IPHONE3G
     bool
     default y
