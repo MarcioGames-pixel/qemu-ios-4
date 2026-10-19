@@ -18,9 +18,9 @@ PMGR timebase with two event timers, SPI0, and a 1 MiB SPI-NOR command model
 with an optional writable overlay. Timer IRQ wiring is still missing because
 the S5L8920 interrupt controller is not yet implemented.
 
-The remaining peripheral range logs as unimplemented. There is no NAND/IOP
-controller, no genuine BootROM, no complete boot-chain loader, display, USB,
-baseband, or iOS 6 kernel boot path. QEMU being able to create the machine is
+The remaining peripheral range logs as unimplemented. The NAND/IOP storage path,
+flash controller, genuine BootROM, complete boot-chain loader, display, USB,
+baseband, and iOS 6 kernel boot path are still missing. QEMU being able to create the machine is
 only a registration/initialization test; it does not prove firmware
 compatibility.
 
