@@ -1,4 +1,5 @@
-/* Adapted from samhenrigold/qemu-ios (GPL-2.0-only). */
+/* Adapted from samhenrigold/qemu-ios. SPDX-License-Identifier: GPL-2.0-only */
+/*
  * S5L8900 SPI Emulation
  *
  * by cmw
