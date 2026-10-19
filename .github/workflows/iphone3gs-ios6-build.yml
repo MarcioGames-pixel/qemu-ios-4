@@ -59,7 +59,7 @@ jobs:
           fi
       - name: Python syntax and IPSW inspector tests
         run: |
-          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py scripts/ios/inspect-iphone3gs-bootchain.py scripts/ios/create-iphone3gs-nor.py
-          python3 -m unittest scripts.ios.tests.test_inspect_iphone3gs_ios6 scripts.ios.tests.test_inspect_iphone3gs_bootchain
+          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py scripts/ios/inspect-iphone3gs-bootchain.py scripts/ios/inspect-iphone3gs-nand.py scripts/ios/create-iphone3gs-nor.py
+          python3 -m unittest scripts.ios.tests.test_inspect_iphone3gs_ios6 scripts.ios.tests.test_inspect_iphone3gs_bootchain scripts.ios.tests.test_inspect_iphone3gs_nand
       - name: Check Termux helper shell syntax
         run: bash -n scripts/ios/build-termux.sh
