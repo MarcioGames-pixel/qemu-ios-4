@@ -58,3 +58,15 @@ The IPSW inspection script extracts firmware files actually present in the
 restore package. It cannot extract the silicon BootROM, and it does not
 synthesize a valid NAND or NOR image. The BootROM mapping required by a
 machine must not be confused with possession of Apple's immutable ROM bytes.
+
+Detailed NAND/IOP dependency audit
+----------------------------------
+
+See :doc:`iphone3gs-nand-iop-port-map` for the component-by-component port
+order and acceptance tests. In particular, the upstream IOP supports different
+firmware ABIs across iOS releases, and the H2FMI model depends on CDMA FIFO
+behavior. Do not transplant the A4 IOP's old ring-protocol HLE as an iOS 6
+implementation without verifying the newer firmware path. The upstream tree
+also has more than one NAND storage format; the IOP page-store format and the
+standalone `nand-image` helper are not interchangeable merely because both use
+files named as NAND pages.
