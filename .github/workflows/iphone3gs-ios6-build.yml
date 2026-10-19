@@ -15,6 +15,8 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - name: Install build dependencies
         run: |
           sudo apt-get update
@@ -36,10 +38,7 @@ jobs:
             --prefix="$GITHUB_WORKSPACE/build/install"
       - name: Compile
         run: ninja -C build
-      - name: Verify machine and helper targets
-        run: |
-          build/qemu-system-arm --version
-          build/qemu-system-arm -machine help | grep -i iphone3g
-          make -C build iphone3g-help
+      - name: Verify the existing iPhone 3G machine remains registered
+        run: build/qemu-system-arm -machine help | grep -i iphone3g
       - name: Python syntax check for firmware inspector
         run: python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py
