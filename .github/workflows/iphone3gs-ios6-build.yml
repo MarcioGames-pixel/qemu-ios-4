@@ -42,12 +42,13 @@ jobs:
         run: |
           build/qemu-system-arm -machine help | grep -i iphone3g
           build/qemu-system-arm -machine help | grep -i iphone3gs
-      - name: Initialize the iPhone 3GS board scaffold
+      - name: Initialize board with SPI NOR and writable overlay
         run: |
+          python3 scripts/ios/create-iphone3gs-nor.py build/nor-test
           set +e
           timeout 3s build/qemu-system-arm \
-            -machine iphone3gs -S -display none -nodefaults \
-            -monitor none -serial none -no-reboot
+            -machine "iphone3gs,nor=build/nor-test/nor.bin,nor-rw=build/nor-test/nor-rw.bin" \
+            -S -display none -nodefaults -monitor none -serial none -no-reboot
           status=$?
           set -e
           if [ "$status" -ne 124 ]; then
@@ -56,7 +57,7 @@ jobs:
           fi
       - name: Python syntax and IPSW inspector tests
         run: |
-          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py
+          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py scripts/ios/create-iphone3gs-nor.py
           python3 -m unittest scripts.ios.tests.test_inspect_iphone3gs_ios6
       - name: Check Termux helper shell syntax
         run: bash -n scripts/ios/build-termux.sh
