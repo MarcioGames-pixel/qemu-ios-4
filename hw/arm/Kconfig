@@ -83,6 +83,9 @@ config IPHONE3GS
     bool
     default y
     depends on TCG && ARM
+    select PL190
+    select SSI
+    select PTIMER
     select UNIMP
 
 config IPHONE3G
