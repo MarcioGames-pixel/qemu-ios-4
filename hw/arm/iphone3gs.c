@@ -1,8 +1,9 @@
 /*
- * Apple iPhone 3GS (iPhone2,1 / N88AP) early board scaffold.
+ * Apple iPhone 3GS (iPhone2,1 / N88AP) early board model.
  *
- * This deliberately models only the known CPU/memory foundation. It does
- * not claim to emulate the S5L8920 peripherals or the iOS boot chain yet.
+ * CPU, memory, CHIPID and an optional externally supplied boot ROM are modeled.
+ * S5L8920 peripherals, NAND/NOR controllers and the iOS boot chain remain
+ * incomplete; this is not yet an iOS-capable emulator.
  *
  * SPDX-License-Identifier: GPL-2.0-or-later
  */
@@ -10,6 +11,7 @@
 #include "qemu/osdep.h"
 #include "hw/arm/machines-qom.h"
 #include "hw/core/boards.h"
+#include "hw/core/loader.h"
 #include "hw/misc/unimp.h"
 #include "system/address-spaces.h"
 #include "qemu/error-report.h"
@@ -24,14 +26,53 @@ OBJECT_DECLARE_SIMPLE_TYPE(IPhone3GSMachineState, IPHONE3GS_MACHINE)
 #define IPHONE3GS_DRAM_SIZE       (256 * MiB)
 #define IPHONE3GS_SRAM_BASE       0x84000000ULL
 #define IPHONE3GS_SRAM_SIZE       (256 * KiB)
-#define IPHONE3GS_DRAM_LO_SIZE    0x1000
+#define IPHONE3GS_BOOTROM_BASE    0x00000000ULL
+#define IPHONE3GS_BOOTROM_SIZE    (64 * KiB)
+#define IPHONE3GS_CHIPID_BASE     0xbf500000ULL
+#define IPHONE3GS_CHIPID_SIZE     0x1000
+#define IPHONE3GS_PERIPH_BASE     0x80000000ULL
+#define IPHONE3GS_PERIPH_END      0xc0000000ULL
+
+/* N88AP fuse words reported by the public S5L8920 board reference. These are
+ * SoC identity values, not a dump of the immutable silicon BootROM. */
+static const uint32_t iphone3gs_chipid_words[] = {
+    0x31800387, 0x80758000, 0, 0
+};
 
 struct IPhone3GSMachineState {
     MachineState parent_obj;
     ARMCPU *cpu;
     MemoryRegion sram;
-    MemoryRegion dram_lo;
+    MemoryRegion bootrom;
+    MemoryRegion chipid;
 };
+
+static void iphone3gs_load_bootrom(IPhone3GSMachineState *s,
+                                   MachineState *machine)
+{
+    g_autofree char *filename = NULL;
+    ssize_t size;
+
+    /* A missing -bios leaves a zero-filled diagnostic placeholder so that
+     * developers can test machine registration. It is not a real BootROM. */
+    if (!machine->firmware) {
+        warn_report("iphone3gs: no -bios supplied; reset ROM is a zero-filled placeholder, not Apple's BootROM");
+        return;
+    }
+
+    filename = qemu_find_file(QEMU_FILE_TYPE_BIOS, machine->firmware);
+    if (!filename) {
+        error_report("iphone3gs: cannot find boot ROM '%s'", machine->firmware);
+        exit(EXIT_FAILURE);
+    }
+
+    size = load_image_mr(filename, &s->bootrom);
+    if (size <= 0 || size > IPHONE3GS_BOOTROM_SIZE) {
+        error_report("iphone3gs: -bios file '%s' must be 1..%u bytes",
+                     machine->firmware, (unsigned)IPHONE3GS_BOOTROM_SIZE);
+        exit(EXIT_FAILURE);
+    }
+}
 
 static void iphone3gs_init(MachineState *machine)
 {
@@ -41,7 +82,7 @@ static void iphone3gs_init(MachineState *machine)
 
     if (machine->ram_size != IPHONE3GS_DRAM_SIZE) {
         error_report("iphone3gs: this prototype currently requires exactly 256 MiB RAM");
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     cpuobj = object_new(machine->cpu_type);
@@ -52,25 +93,34 @@ static void iphone3gs_init(MachineState *machine)
     object_property_set_bool(cpuobj, "realized", true, &error_fatal);
     object_unref(cpuobj);
 
-    /* N88AP DRAM starts at 0x40000000. Physical page zero aliases its first
-     * page on the S5L8920 family; iOS uses this during early vector setup. */
     memory_region_add_subregion(sysmem, IPHONE3GS_DRAM_BASE, machine->ram);
-    memory_region_init_alias(&s->dram_lo, OBJECT(machine),
-                             "iphone3gs.dram-low-alias", machine->ram, 0,
-                             IPHONE3GS_DRAM_LO_SIZE);
-    memory_region_add_subregion(sysmem, 0, &s->dram_lo);
-
     memory_region_init_ram(&s->sram, OBJECT(machine), "iphone3gs.sram",
                            IPHONE3GS_SRAM_SIZE, &error_fatal);
     memory_region_add_subregion(sysmem, IPHONE3GS_SRAM_BASE, &s->sram);
 
+    memory_region_init_rom(&s->bootrom, OBJECT(machine), "iphone3gs.bootrom",
+                           IPHONE3GS_BOOTROM_SIZE, &error_fatal);
+    memory_region_add_subregion(sysmem, IPHONE3GS_BOOTROM_BASE, &s->bootrom);
+    iphone3gs_load_bootrom(s, machine);
+
+    memory_region_init_rom(&s->chipid, OBJECT(machine), "iphone3gs.chipid",
+                           IPHONE3GS_CHIPID_SIZE, &error_fatal);
+    memcpy(memory_region_get_ram_ptr(&s->chipid), iphone3gs_chipid_words,
+           sizeof(iphone3gs_chipid_words));
+    memory_region_add_subregion(sysmem, IPHONE3GS_CHIPID_BASE, &s->chipid);
+
     /*
-     * The S5L8920 peripheral window is intentionally an unimplemented trap
-     * region. Individual devices must replace it as they are ported and
-     * tested. This avoids silently reusing S5L8900/iPhone 3G register models.
+     * Keep the peripheral trap split around CHIPID, whose N88AP register
+     * window is at 0xbf500000. Each S5L8920 device must replace a trap range
+     * only after its register semantics and interrupt wiring are verified.
      */
-    create_unimplemented_device("iphone3gs.s5l8920-peripherals",
-                                0x80000000, 0x40000000);
+    create_unimplemented_device("iphone3gs.s5l8920-peripherals-low",
+                                IPHONE3GS_PERIPH_BASE,
+                                IPHONE3GS_CHIPID_BASE - IPHONE3GS_PERIPH_BASE);
+    create_unimplemented_device("iphone3gs.s5l8920-peripherals-high",
+                                IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE,
+                                IPHONE3GS_PERIPH_END -
+                                (IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE));
 }
 
 static void iphone3gs_class_init(ObjectClass *oc, const void *data)
@@ -81,7 +131,7 @@ static void iphone3gs_class_init(ObjectClass *oc, const void *data)
     };
     MachineClass *mc = MACHINE_CLASS(oc);
 
-    mc->desc = "Apple iPhone 3GS (iPhone2,1 / N88AP; early hardware scaffold)";
+    mc->desc = "Apple iPhone 3GS (iPhone2,1 / N88AP; early hardware model)";
     mc->init = iphone3gs_init;
     mc->default_cpu_type = ARM_CPU_TYPE_NAME("cortex-a8");
     mc->valid_cpu_types = valid_cpu_types;
