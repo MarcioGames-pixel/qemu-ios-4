@@ -2,7 +2,7 @@
  * S5L8920 PMGR model adapted from samhenrigold/qemu-ios
  * (https://github.com/samhenrigold/qemu-ios).
  *
- * SPDX-License-Identifier: GPL-2.0-or-later
+ * SPDX-License-Identifier: GPL-2.0-only
  */
 /*
  * S5L8920/8922 PMGR (DT arm-io/pmgr, pmgr,s5l8920x, 0xbf100000 + 0x2000):
