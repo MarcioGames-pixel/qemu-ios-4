@@ -96,3 +96,8 @@ z2_aer915_event(int8_t event, int8_t len) "i2c event =0x%x len=%d bytes"
 
 # bcm2838.c
 bcm2838_gic_set_irq(int irq, int level) "gic irq:%d lvl:%d"
+
+# S5L8920 SPI/NOR
+ipod_touch_spi_cs(uint8_t index, uint32_t pin) "spi%u CS pin=0x%x"
+ipod_touch_nor_finish(uint32_t cmd, uint32_t addr, uint8_t addr_bytes, uint16_t count, uint8_t write_enabled, uint8_t status, uint8_t first_byte) "cmd=0x%x addr=0x%x addr_bytes=%u count=%u write_enabled=%u status=0x%x first=0x%x"
+ipod_touch_nor_command(uint8_t cmd) "command=0x%x"
