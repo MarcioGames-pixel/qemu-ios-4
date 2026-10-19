@@ -12,6 +12,7 @@
 #include "hw/arm/machines-qom.h"
 #include "hw/core/boards.h"
 #include "hw/core/loader.h"
+#include "hw/core/sysbus.h"
 #include "hw/misc/unimp.h"
 #include "system/address-spaces.h"
 #include "qemu/error-report.h"
@@ -28,6 +29,8 @@ OBJECT_DECLARE_SIMPLE_TYPE(IPhone3GSMachineState, IPHONE3GS_MACHINE)
 #define IPHONE3GS_SRAM_SIZE       (256 * KiB)
 #define IPHONE3GS_BOOTROM_BASE    0x00000000ULL
 #define IPHONE3GS_BOOTROM_SIZE    (64 * KiB)
+#define IPHONE3GS_PMGR_BASE       0xbf100000ULL
+#define IPHONE3GS_PMGR_SIZE       0x2000
 #define IPHONE3GS_CHIPID_BASE     0xbf500000ULL
 #define IPHONE3GS_CHIPID_SIZE     0x1000
 #define IPHONE3GS_PERIPH_BASE     0x80000000ULL
@@ -109,6 +112,15 @@ static void iphone3gs_init(MachineState *machine)
            sizeof(iphone3gs_chipid_words));
     memory_region_add_subregion(sysmem, IPHONE3GS_CHIPID_BASE, &s->chipid);
 
+    /* PMGR supplies the 24 MHz timebase and two event timers used by the
+     * S5L8920 family. Timer IRQ wiring awaits the real interrupt-controller
+     * model, but the counter and event registers are now functional. */
+    {
+        DeviceState *pmgr = qdev_new("s5l8920.pmgr");
+        sysbus_realize_and_unref(SYS_BUS_DEVICE(pmgr), &error_fatal);
+        sysbus_mmio_map(SYS_BUS_DEVICE(pmgr), 0, IPHONE3GS_PMGR_BASE);
+    }
+
     /*
      * Keep the peripheral trap split around CHIPID, whose N88AP register
      * window is at 0xbf500000. Each S5L8920 device must replace a trap range
@@ -116,7 +128,11 @@ static void iphone3gs_init(MachineState *machine)
      */
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-low",
                                 IPHONE3GS_PERIPH_BASE,
-                                IPHONE3GS_CHIPID_BASE - IPHONE3GS_PERIPH_BASE);
+                                IPHONE3GS_PMGR_BASE - IPHONE3GS_PERIPH_BASE);
+    create_unimplemented_device("iphone3gs.s5l8920-peripherals-mid",
+                                IPHONE3GS_PMGR_BASE + IPHONE3GS_PMGR_SIZE,
+                                IPHONE3GS_CHIPID_BASE -
+                                (IPHONE3GS_PMGR_BASE + IPHONE3GS_PMGR_SIZE));
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-high",
                                 IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE,
                                 IPHONE3GS_PERIPH_END -
