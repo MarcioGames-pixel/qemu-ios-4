@@ -1,5 +1,4 @@
-/* Adapted from samhenrigold/qemu-ios (GPL-2.0-or-later). */
-#include "hw/arm/ipod_touch_nor_spi.h"
+/* Adapted from samhenrigold/qemu-ios (GPL-2.0-only). */
 #include "qemu/bswap.h"
 #include "migration/vmstate.h"
 #include "trace.h"
