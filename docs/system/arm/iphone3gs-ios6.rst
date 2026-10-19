@@ -13,11 +13,28 @@ Cortex-A8 CPU model, 256 MiB DRAM at 0x40000000, a low alias of the first DRAM
 page, 256 KiB SRAM at 0x84000000, and an unimplemented peripheral window.
 It intentionally does not reuse the iPhone 3G's S5L8900 devices or ARM1176 CPU.
 
-The S5L8920 peripheral range currently logs as unimplemented. There is no
-working BootROM, NOR/NAND controller, boot-chain loader, display, USB, baseband,
-or iOS 6 kernel boot path in this scaffold. QEMU being able to create the
-machine is only a registration/initialization test; it does not prove firmware
+Implemented pieces now include the N88AP CHIPID fuse words, a 24 MHz
+PMGR timebase with two event timers, SPI0, and a 1 MiB SPI-NOR command model
+with an optional writable overlay. Timer IRQ wiring is still missing because
+the S5L8920 interrupt controller is not yet implemented.
+
+The remaining peripheral range logs as unimplemented. There is no NAND/IOP
+controller, no genuine BootROM, no complete boot-chain loader, display, USB,
+baseband, or iOS 6 kernel boot path. QEMU being able to create the machine is
+only a registration/initialization test; it does not prove firmware
 compatibility.
+
+Create erased-flash test files (not bootable firmware) with::
+
+   python3 scripts/ios/create-iphone3gs-nor.py ./nor-test
+
+Then run with a separate read-only base and writable overlay::
+
+   build/qemu-system-arm -machine iphone3gs,nor=./nor-test/nor.bin,nor-rw=./nor-test/nor-rw.bin -S -display none
+
+Both files must be exactly 1 MiB. Do not point nor-rw at the same file as nor.
+Blank images contain no NVRAM or boot firmware; use a compatible NOR dump only
+if you have one obtained lawfully.
 
 Inspect and extract firmware payloads
 -------------------------------------
