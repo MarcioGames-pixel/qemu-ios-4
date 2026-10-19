@@ -19,9 +19,7 @@ with an optional writable overlay. The two PMGR timer IRQ outputs are now routed
 three-VIC cascade remains a PL190 approximation and is not yet validated as a
 faithful S5L8920 PL192 implementation; other device IRQs remain unconnected.
 
-The remaining peripheral range logs as unimplemented. The NAND/IOP storage path,
-flash controller, genuine BootROM, complete boot-chain loader, display, USB,
-baseband, and iOS 6 kernel boot path are still missing. QEMU being able to create the machine is
+The remaining peripheral range logs as unimplemented. A reusable, file-backed NAND image-store helper has now been ported from the public samhenrigold/qemu-ios project and added to the iPhone 3GS build. It provides geometry-checked page records, spare/OOB bytes, erased-page semantics, per-chip backing files, page read/write/erase operations and flush-on-stop. It is storage infrastructure only: no S5L8920 IOP or H2FMI controller is connected to it yet. The flash controller, genuine BootROM, complete boot-chain loader, display, USB, baseband, and iOS 6 kernel boot path are still missing. QEMU being able to create the machine is
 only a registration/initialization test; it does not prove firmware
 compatibility.
 
@@ -70,8 +68,10 @@ Firmware and storage boundaries
 -------------------------------
 
 * NAND is emulator-owned persistent storage. The IPSW does not contain a
-  ready-to-use NAND dump; the N88AP geometry, ECC/OOB layout, controller, and
-  initialization still need to be implemented.
+  ready-to-use NAND dump. The newly ported generic NAND image-store helper is
+  not yet wired to an N88AP geometry or S5L8920 controller. N88AP geometry,
+  ECC/OOB behavior, bad blocks, IOP protocol and controller initialization
+  still need implementation and validation.
 * BootROM is immutable code in the physical device's silicon and is not
   present as an extractable IPSW file. Do not label a zero-filled placeholder
   as a real BootROM.
