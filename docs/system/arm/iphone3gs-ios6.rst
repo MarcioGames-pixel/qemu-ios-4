@@ -1,0 +1,27 @@
+# iPhone 3GS / iOS 6.0 firmware investigation
+
+Target IPSW: `iPhone2,1_6.0_10A403_Restore.ipsw` (ProductType `iPhone2,1`, build `10A403`).
+
+## Inspect and extract firmware payloads
+
+After downloading the IPSW from Apple's CDN, run:
+
+```sh
+python3 scripts/ios/inspect-iphone3gs-ios6.py \
+  /path/to/iPhone2,1_6.0_10A403_Restore.ipsw
+```
+
+The script validates the IPSW ZIP and its `Info.plist`, checks the target product/version/build, then extracts the restore manifests and N88AP boot/NOR payloads under `.artifacts/firmware/iphone3gs-6.0-10A403/`. It writes a SHA-256 inventory. The IPSW is intentionally not committed to Git.
+
+## Important implementation boundary
+
+This extraction step does **not** make the existing iPhone 3G machine compatible with the 3GS. The current machine is for `iPhone1,2 / N82AP` and iOS 4.2.1; the 3GS needs a separate `iPhone2,1 / N88AP` machine model, including its SoC/peripherals, boot sequence, storage geometry, and firmware-specific restore flow. This branch's Linux build job is only a compile smoke test, not proof that iOS 6 boots.
+
+- NAND is an emulator-owned persistent storage image. The IPSW does not contain a ready-to-use NAND dump; its geometry and initialization must be implemented for the target board.
+- BootROM is immutable code in the physical device's silicon and is not present as an extractable IPSW file. Do not label a zero-filled placeholder as a real BootROM.
+- NOR firmware payloads can be extracted from the IPSW's `all_flash` directory, but a usable NOR image still requires the target machine's correct flash geometry and programming behavior.
+- The existing `iphone3g-*` make targets remain specific to the iPhone 3G. Do not use them to restore an N88AP firmware image.
+
+## Termux
+
+The Linux build smoke test is not a Termux test. Termux is an Android host, so Cocoa must be disabled and its display/dependency configuration must be handled separately. This change deliberately does not claim a successful Termux build until that build is tested on Android.
