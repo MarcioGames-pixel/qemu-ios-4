@@ -15,8 +15,9 @@ It intentionally does not reuse the iPhone 3G's S5L8900 devices or ARM1176 CPU.
 
 Implemented pieces now include the N88AP CHIPID fuse words, a 24 MHz
 PMGR timebase with two event timers, SPI0, and a 1 MiB SPI-NOR command model
-with an optional writable overlay. Timer IRQ wiring is still missing because
-the S5L8920 interrupt controller is not yet implemented.
+with an optional writable overlay. The two PMGR timer IRQ outputs are now routed to VIC inputs 6 and 5. The
+three-VIC cascade remains a PL190 approximation and is not yet validated as a
+faithful S5L8920 PL192 implementation; other device IRQs remain unconnected.
 
 The remaining peripheral range logs as unimplemented. The NAND/IOP storage path,
 flash controller, genuine BootROM, complete boot-chain loader, display, USB,
