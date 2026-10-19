@@ -13,6 +13,8 @@
 #include "hw/core/boards.h"
 #include "hw/core/loader.h"
 #include "hw/core/sysbus.h"
+#include "hw/arm/ipod_touch_spi.h"
+#include "hw/arm/ipod_touch_nor_spi.h"
 #include "hw/misc/unimp.h"
 #include "system/address-spaces.h"
 #include "qemu/error-report.h"
@@ -29,6 +31,8 @@ OBJECT_DECLARE_SIMPLE_TYPE(IPhone3GSMachineState, IPHONE3GS_MACHINE)
 #define IPHONE3GS_SRAM_SIZE       (256 * KiB)
 #define IPHONE3GS_BOOTROM_BASE    0x00000000ULL
 #define IPHONE3GS_BOOTROM_SIZE    (64 * KiB)
+#define IPHONE3GS_SPI0_BASE       0x82000000ULL
+#define IPHONE3GS_SPI0_SIZE       0x100
 #define IPHONE3GS_PMGR_BASE       0xbf100000ULL
 #define IPHONE3GS_PMGR_SIZE       0x2000
 #define IPHONE3GS_CHIPID_BASE     0xbf500000ULL
@@ -48,6 +52,8 @@ struct IPhone3GSMachineState {
     MemoryRegion sram;
     MemoryRegion bootrom;
     MemoryRegion chipid;
+    char *nor_path;
+    char *nor_rw_path;
 };
 
 static void iphone3gs_load_bootrom(IPhone3GSMachineState *s,
@@ -122,13 +128,34 @@ static void iphone3gs_init(MachineState *machine)
     }
 
     /*
-     * Keep the peripheral trap split around CHIPID, whose N88AP register
+     * SPI0 drives the N88AP 1 MiB NOR flash. The SPI/NOR models implement
+     * serial command, page-program, erase, status and optional persistence.
+     */
+    {
+        DeviceState *spi0 = ipod_touch_spi_create(IPHONE3GS_SPI0_BASE, NULL,
+                                                  0, "nor", false);
+        IPodTouchSPIState *spi = IPOD_TOUCH_SPI(spi0);
+        if (s->nor_path) {
+            spi->nor->nor_path = g_strdup(s->nor_path);
+        }
+        if (s->nor_rw_path && s->nor_rw_path[0]) {
+            ipod_touch_nor_spi_open_overlay(spi->nor, s->nor_rw_path,
+                                            &error_fatal);
+        }
+    }
+
+    /*
+     * Keep the peripheral trap split around SPI0, PMGR and CHIPID, whose N88AP register
      * window is at 0xbf500000. Each S5L8920 device must replace a trap range
      * only after its register semantics and interrupt wiring are verified.
      */
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-low",
                                 IPHONE3GS_PERIPH_BASE,
-                                IPHONE3GS_PMGR_BASE - IPHONE3GS_PERIPH_BASE);
+                                IPHONE3GS_SPI0_BASE - IPHONE3GS_PERIPH_BASE);
+    create_unimplemented_device("iphone3gs.s5l8920-peripherals-spi-gap",
+                                IPHONE3GS_SPI0_BASE + IPHONE3GS_SPI0_SIZE,
+                                IPHONE3GS_PMGR_BASE -
+                                (IPHONE3GS_SPI0_BASE + IPHONE3GS_SPI0_SIZE));
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-mid",
                                 IPHONE3GS_PMGR_BASE + IPHONE3GS_PMGR_SIZE,
                                 IPHONE3GS_CHIPID_BASE -
@@ -137,6 +164,37 @@ static void iphone3gs_init(MachineState *machine)
                                 IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE,
                                 IPHONE3GS_PERIPH_END -
                                 (IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE));
+}
+
+static char *iphone3gs_get_nor(Object *obj, Error **errp)
+{
+    return g_strdup(IPHONE3GS_MACHINE(obj)->nor_path);
+}
+
+static void iphone3gs_set_nor(Object *obj, const char *value, Error **errp)
+{
+    IPhone3GSMachineState *s = IPHONE3GS_MACHINE(obj);
+    g_free(s->nor_path);
+    s->nor_path = g_strdup(value);
+}
+
+static char *iphone3gs_get_nor_rw(Object *obj, Error **errp)
+{
+    return g_strdup(IPHONE3GS_MACHINE(obj)->nor_rw_path);
+}
+
+static void iphone3gs_set_nor_rw(Object *obj, const char *value, Error **errp)
+{
+    IPhone3GSMachineState *s = IPHONE3GS_MACHINE(obj);
+    g_free(s->nor_rw_path);
+    s->nor_rw_path = g_strdup(value);
+}
+
+static void iphone3gs_finalize(Object *obj)
+{
+    IPhone3GSMachineState *s = IPHONE3GS_MACHINE(obj);
+    g_free(s->nor_path);
+    g_free(s->nor_rw_path);
 }
 
 static void iphone3gs_class_init(ObjectClass *oc, const void *data)
@@ -156,6 +214,15 @@ static void iphone3gs_class_init(ObjectClass *oc, const void *data)
     mc->max_cpus = 1;
     mc->no_floppy = true;
     mc->no_cdrom = true;
+
+    object_class_property_add_str(oc, "nor", iphone3gs_get_nor,
+                                  iphone3gs_set_nor);
+    object_class_property_set_description(
+        oc, "nor", "Optional read-only 1 MiB SPI NOR image for N88AP");
+    object_class_property_add_str(oc, "nor-rw", iphone3gs_get_nor_rw,
+                                  iphone3gs_set_nor_rw);
+    object_class_property_set_description(
+        oc, "nor-rw", "Optional writable 1 MiB NOR overlay image");
 }
 
 static const TypeInfo iphone3gs_machine_type = {
@@ -163,6 +230,7 @@ static const TypeInfo iphone3gs_machine_type = {
     .parent = TYPE_MACHINE,
     .instance_size = sizeof(IPhone3GSMachineState),
     .class_init = iphone3gs_class_init,
+    .instance_finalize = iphone3gs_finalize,
     .interfaces = arm_machine_interfaces,
 };
 
