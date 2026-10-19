@@ -13,6 +13,7 @@
 #include "hw/core/boards.h"
 #include "hw/core/loader.h"
 #include "hw/core/sysbus.h"
+#include "hw/core/irq.h"
 #include "hw/arm/ipod_touch_spi.h"
 #include "hw/arm/ipod_touch_nor_spi.h"
 #include "hw/misc/unimp.h"
@@ -33,6 +34,9 @@ OBJECT_DECLARE_SIMPLE_TYPE(IPhone3GSMachineState, IPHONE3GS_MACHINE)
 #define IPHONE3GS_BOOTROM_SIZE    (64 * KiB)
 #define IPHONE3GS_SPI0_BASE       0x82000000ULL
 #define IPHONE3GS_SPI0_SIZE       0x100
+#define IPHONE3GS_VIC_BASE(n)     (0xbf200000ULL + (n) * 0x10000ULL)
+#define IPHONE3GS_VIC_COUNT        3
+#define IPHONE3GS_VIC_SIZE         0x1000
 #define IPHONE3GS_PMGR_BASE       0xbf100000ULL
 #define IPHONE3GS_PMGR_SIZE       0x2000
 #define IPHONE3GS_CHIPID_BASE     0xbf500000ULL
@@ -54,6 +58,7 @@ struct IPhone3GSMachineState {
     MemoryRegion chipid;
     char *nor_path;
     char *nor_rw_path;
+    DeviceState *vic[IPHONE3GS_VIC_COUNT];
 };
 
 static void iphone3gs_load_bootrom(IPhone3GSMachineState *s,
@@ -145,9 +150,26 @@ static void iphone3gs_init(MachineState *machine)
     }
 
     /*
-     * Keep the peripheral trap split around SPI0, PMGR and CHIPID, whose N88AP register
-     * window is at 0xbf500000. Each S5L8920 device must replace a trap range
-     * only after its register semantics and interrupt wiring are verified.
+     * The S5L8920 has three chained PL192-compatible interrupt controllers
+     * in the VIC register window. This prototype uses QEMU's PL190 model for
+     * the common register interface; exact PL192 quirks and device IRQ routing
+     * still need validation against N88AP traces/device-tree data.
+     */
+    for (int i = 0; i < IPHONE3GS_VIC_COUNT; i++) {
+        s->vic[i] = qdev_new("pl190");
+        sysbus_realize_and_unref(SYS_BUS_DEVICE(s->vic[i]), &error_fatal);
+        sysbus_mmio_map(SYS_BUS_DEVICE(s->vic[i]), 0, IPHONE3GS_VIC_BASE(i));
+    }
+    sysbus_connect_irq(SYS_BUS_DEVICE(s->vic[0]), 0,
+                       qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_IRQ));
+    sysbus_connect_irq(SYS_BUS_DEVICE(s->vic[0]), 1,
+                       qdev_get_gpio_in(DEVICE(s->cpu), ARM_CPU_FIQ));
+    qdev_connect_gpio_out(s->vic[1], 0, qdev_get_gpio_in(s->vic[0], 31));
+    qdev_connect_gpio_out(s->vic[2], 0, qdev_get_gpio_in(s->vic[1], 31));
+
+    /*
+     * Keep unimplemented traps away from mapped devices. Most peripheral
+     * windows remain placeholders until their register semantics are known.
      */
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-low",
                                 IPHONE3GS_PERIPH_BASE,
@@ -158,8 +180,14 @@ static void iphone3gs_init(MachineState *machine)
                                 (IPHONE3GS_SPI0_BASE + IPHONE3GS_SPI0_SIZE));
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-mid",
                                 IPHONE3GS_PMGR_BASE + IPHONE3GS_PMGR_SIZE,
-                                IPHONE3GS_CHIPID_BASE -
+                                IPHONE3GS_VIC_BASE(0) -
                                 (IPHONE3GS_PMGR_BASE + IPHONE3GS_PMGR_SIZE));
+    create_unimplemented_device("iphone3gs.s5l8920-peripherals-vic-gap",
+                                IPHONE3GS_VIC_BASE(0) +
+                                IPHONE3GS_VIC_COUNT * 0x10000ULL,
+                                IPHONE3GS_CHIPID_BASE -
+                                (IPHONE3GS_VIC_BASE(0) +
+                                 IPHONE3GS_VIC_COUNT * 0x10000ULL));
     create_unimplemented_device("iphone3gs.s5l8920-peripherals-high",
                                 IPHONE3GS_CHIPID_BASE + IPHONE3GS_CHIPID_SIZE,
                                 IPHONE3GS_PERIPH_END -
