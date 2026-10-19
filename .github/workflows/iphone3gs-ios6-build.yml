@@ -40,5 +40,9 @@ jobs:
         run: ninja -C build
       - name: Verify the existing iPhone 3G machine remains registered
         run: build/qemu-system-arm -machine help | grep -i iphone3g
-      - name: Python syntax check for firmware inspector
-        run: python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py
+      - name: Python syntax and IPSW inspector tests
+        run: |
+          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py
+          python3 -m unittest scripts.ios.tests.test_inspect_iphone3gs_ios6
+      - name: Check Termux helper shell syntax
+        run: bash -n scripts/ios/build-termux.sh
