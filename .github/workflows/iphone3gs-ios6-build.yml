@@ -38,8 +38,22 @@ jobs:
             --prefix="$GITHUB_WORKSPACE/build/install"
       - name: Compile
         run: ninja -C build
-      - name: Verify the existing iPhone 3G machine remains registered
-        run: build/qemu-system-arm -machine help | grep -i iphone3g
+      - name: Verify iPhone machines are registered separately
+        run: |
+          build/qemu-system-arm -machine help | grep -i iphone3g
+          build/qemu-system-arm -machine help | grep -i iphone3gs
+      - name: Initialize the iPhone 3GS board scaffold
+        run: |
+          set +e
+          timeout 3s build/qemu-system-arm \
+            -machine iphone3gs -S -display none -nodefaults \
+            -monitor none -serial none -no-reboot
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ]; then
+            echo "Expected the paused board to remain alive until timeout; exit=$status"
+            exit 1
+          fi
       - name: Python syntax and IPSW inspector tests
         run: |
           python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py
