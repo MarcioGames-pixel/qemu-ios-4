@@ -53,6 +53,22 @@ Upstream components and dependencies
    - BootROM, iBoot, NAND contents, device tree/boot arguments, and the kernel
      handoff are separate milestones with separate tests.
 
+Read-only NAND store inspector
+------------------------------
+
+scripts/ios/inspect-iphone3gs-nand.py validates a candidate file-backed
+page store's geometry.json, storage-format label, expected page-store file
+sizes, and presence of the declared chip files. It does not invent N88AP
+geometry and does not alter files. Example::
+
+   python3 scripts/ios/inspect-iphone3gs-nand.py ./candidate-nand --json nand-report.json
+
+A successful report means only that the directory is structurally consistent
+with the generic page-store manifest. It does not establish that the chip ID,
+ECC/OOB layout, bad-block markers, storage format, or firmware ABI matches the
+iPhone 3GS. The tests use a tiny synthetic geometry and are not a hardware
+profile.
+
 Required port sequence
 ----------------------
 
@@ -76,6 +92,10 @@ The port is not considered complete until the build passes on the project's
 supported host/Android build path and tests demonstrate NAND read/program/erase
 and overlay behavior. An iOS 6 boot claim additionally requires a trace showing
 the real boot chain progressing beyond the current placeholder reset ROM.
+
+The read-only NAND inspector and synthetic-format unit tests are now included
+in this branch and run in the Linux workflow. They are diagnostic tooling, not
+a replacement for the missing NAND/IOP controller implementation.
 
 Current implementation in this branch remains a preliminary board model:
 CPU/RAM, CHIPID, PMGR timers, early VIC wiring, SPI NOR model, and IPSW inventory
