@@ -18,12 +18,22 @@ jobs:
       - name: Install build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y             bc bison flex gcc g++ git libglib2.0-dev libpixman-1-dev             libfdt-dev libslirp-dev libusb-1.0-0-dev ninja-build pkg-config             python3 python3-venv python3-pip
+          sudo apt-get install -y \
+            bc bison flex gcc g++ git libglib2.0-dev libpixman-1-dev \
+            libfdt-dev libslirp-dev libusb-1.0-0-dev ninja-build pkg-config \
+            python3 python3-venv python3-pip
       - name: Configure headless ARM system emulator
         run: |
           mkdir -p build
           cd build
-          ../configure             --target-list=arm-softmmu             --enable-tcg             --disable-cocoa             --disable-gtk             --disable-sdl             --disable-werror             --prefix="$GITHUB_WORKSPACE/build/install"
+          ../configure \
+            --target-list=arm-softmmu \
+            --enable-tcg \
+            --disable-cocoa \
+            --disable-gtk \
+            --disable-sdl \
+            --disable-werror \
+            --prefix="$GITHUB_WORKSPACE/build/install"
       - name: Compile
         run: ninja -C build
       - name: Verify machine and helper targets
