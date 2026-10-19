@@ -24,7 +24,7 @@ STAGES = (
     ("iBEC", re.compile(r"(^|/)iBEC\.", re.I)),
     ("DeviceTree", re.compile(r"DeviceTree", re.I)),
     ("KernelCache", re.compile(r"kernelcache", re.I)),
-    ("RestoreRamDisk", re.compile(r"RestoreRamDisk|018-.*\.dmg$", re.I)),
+    ("RestoreRamDisk", re.compile(r"RestoreRamDisk", re.I)),
     ("RootFilesystem", re.compile(r"(^|/)018-.*\.dmg$", re.I)),
 )
 
