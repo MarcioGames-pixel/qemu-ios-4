@@ -41,7 +41,7 @@ def inspect_store(root: Path) -> tuple[dict, list[str]]:
     if not isinstance(chip_id, str) or not chip_id or any(c not in "0123456789abcdefABCDEF" for c in chip_id):
         errors.append("chip_id must be a non-empty hexadecimal string")
     storage_format = data.get("storage_format", "legacy-zero-blank-v1")
-    if storage_format not in FORMATS:
+    if not isinstance(storage_format, str) or storage_format not in FORMATS:
         errors.append(f"unsupported storage_format: {storage_format!r}")
 
     required = [*POSITIVE, *NONNEGATIVE]
