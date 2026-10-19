@@ -79,3 +79,29 @@ Firmware and storage boundaries
   behavior, and boot-chain integration.
 * The existing iphone3g-* restore and boot targets remain specific to the
   iPhone 3G. Do not use them to restore an N88AP firmware image.
+
+
+Boot-chain inventory (read-only)
+--------------------------------
+
+To inventory the IPSW's candidate boot stages and record SHA-256 hashes::
+
+   python3 scripts/ios/inspect-iphone3gs-bootchain.py /path/to/iPhone2,1_6.0_10A403_Restore.ipsw --json bootchain.json
+
+The report lists candidate LLB, iBSS, iBEC, device-tree, kernel-cache and
+restore/root-filesystem payloads when present, and marks the IMG3 magic where
+visible. This is an inventory aid only: it does not decrypt IMG3 files, verify
+Apple signatures, infer missing keys, or run the boot chain. The next boot-flow
+implementation still needs a real reset-ROM handoff, verified stage-specific
+loading/addressing, and the correct NAND/IOP storage semantics.
+
+NAND/IOP and interrupt-controller status
+----------------------------------------
+
+The current VIC cascade is only a PL190-compatible approximation for three
+controller windows; it is not yet a verified S5L8920 PL192 model, and no
+NAND/IOP interrupt sources are connected. The iPhone 3GS NAND path is not
+implemented. Do not treat a directory of synthetic pages or a blank flash
+image as a real NAND dump: page geometry, OOB/ECC, bad-block handling, FTL/VFL
+metadata, IOP ownership and persistence need a compatible implementation and
+tests before firmware can use it.
