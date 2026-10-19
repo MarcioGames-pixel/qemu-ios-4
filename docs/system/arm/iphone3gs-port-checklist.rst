@@ -1,8 +1,9 @@
 iPhone 3GS board-port checklist
 ===============================
 
-Status: an early iPhone3GS machine scaffold is registered; the S5L8920
-peripherals and iOS boot flow are not implemented.
+Status: early iPhone3GS machine is registered. CHIPID, PMGR timebase/event
+timers, SPI0 and a 1 MiB SPI-NOR model are present. Interrupt-controller,
+NAND/IOP, most SoC peripherals, and iOS boot flow remain unimplemented.
 
 Identity and SoC
 ----------------
