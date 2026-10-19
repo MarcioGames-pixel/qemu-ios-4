@@ -1,4 +1,5 @@
-/* Adapted from samhenrigold/qemu-ios (GPL-2.0-only). */
+/* Adapted from samhenrigold/qemu-ios. SPDX-License-Identifier: GPL-2.0-only */
+#include "hw/arm/ipod_touch_nor_spi.h"
 #include "qemu/bswap.h"
 #include "migration/vmstate.h"
 #include "trace.h"
