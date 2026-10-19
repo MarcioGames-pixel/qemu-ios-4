@@ -25,9 +25,9 @@ if [ -n "$missing" ]; then
   exit 2
 fi
 
-for package in glib pixman libslirp libusb libfdt; do
+for package in libglib libpixman libslirp libusb libfdt; do
   if ! pkg list-installed 2>/dev/null | grep -q "^$package/"; then
-    echo "Check/install the Termux package '$package' if configure reports it missing." >&2
+    echo "Optional dependency may be missing: pkg install $package" >&2
   fi
 done
 
@@ -41,6 +41,7 @@ cd "$BUILD_DIR"
   --disable-gtk \
   --disable-sdl \
   --disable-werror \
+  --disable-docs \
   --prefix="$BUILD_DIR/install"
 
 ninja
