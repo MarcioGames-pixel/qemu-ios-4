@@ -1,5 +1,4 @@
-/* Adapted from samhenrigold/qemu-ios (GPL-2.0-or-later). */
-/*
+/* Adapted from samhenrigold/qemu-ios (GPL-2.0-only). */
  * S5L8900 SPI Emulation
  *
  * by cmw
