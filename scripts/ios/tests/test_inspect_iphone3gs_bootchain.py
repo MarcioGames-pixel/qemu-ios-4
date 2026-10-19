@@ -21,6 +21,7 @@ class BootChainInventoryTests(unittest.TestCase):
             zf.writestr("BuildManifest.plist", plistlib.dumps({"test": True}))
             zf.writestr("Firmware/dfu/iBSS.n88ap.RELEASE.dfu", b"Img3test")
             zf.writestr("kernelcache.release.n88", b"kernel-test")
+            zf.writestr("018-12345-001.dmg", b"rootfs-test")
 
     def test_inventory_hashes_and_img3_signature(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -38,6 +39,8 @@ class BootChainInventoryTests(unittest.TestCase):
                                 for p in data["payloads"]))
             self.assertTrue(any(p["stage"] == "KernelCache"
                                 for p in data["payloads"]))
+            rootfs = [p for p in data["payloads"] if p["path"].endswith(".dmg")]
+            self.assertEqual([p["stage"] for p in rootfs], ["RootFilesystem"])
             self.assertIn("no payload decryption", " ".join(data["limitations"]))
 
     def test_rejects_wrong_product(self):
