@@ -167,15 +167,14 @@ static void iphone3gs_init(MachineState *machine)
     qdev_connect_gpio_out(s->vic[2], 0, qdev_get_gpio_in(s->vic[1], 31));
 
     /*
-     * Public S5L8920 reference assigns PMGR event timer 0 to AP IRQ 6 and
-     * timer 1 to IOP IRQ 5. Route both outputs into the first VIC. This only
-     * connects the modeled timer outputs; it does not imply that the VIC's
-     * PL192 behavior or every interrupt number has been validated.
+     * The public S5L8920 reference assigns PMGR event timer 0 to AP IRQ 6
+     * and timer 1 to IOP IRQ 5. Only timer 0 can be connected correctly in
+     * this board scaffold: the IOP VIC and IOP core are not implemented yet.
+     * Do not misroute the IOP interrupt into the AP VIC; wire timer 1 when
+     * the IOP interrupt-controller path is ported and verified.
      */
     sysbus_connect_irq(SYS_BUS_DEVICE(s->pmgr), 0,
                        qdev_get_gpio_in(s->vic[0], 6));
-    sysbus_connect_irq(SYS_BUS_DEVICE(s->pmgr), 1,
-                       qdev_get_gpio_in(s->vic[0], 5));
 
     /*
      * Keep unimplemented traps away from mapped devices. Most peripheral
