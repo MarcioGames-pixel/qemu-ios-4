@@ -48,7 +48,7 @@ jobs:
           build/qemu-system-arm -machine help | grep -i iphone3gs
           build/qemu-system-aarch64 --version
           grep -q 'qdev_get_gpio_in(s->vic\[0\], 6)' hw/arm/iphone3gs.c
-          grep -q 'qdev_get_gpio_in(s->vic\[0\], 5)' hw/arm/iphone3gs.c
+          ! grep -q 'qdev_get_gpio_in(s->vic\[0\], 5)' hw/arm/iphone3gs.c
       - name: Initialize board with SPI NOR and writable overlay
         run: |
           python3 scripts/ios/create-iphone3gs-nor.py build/nor-test
