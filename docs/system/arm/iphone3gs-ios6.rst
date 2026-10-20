@@ -59,10 +59,19 @@ Then run::
 
    bash scripts/ios/build-termux.sh
 
-This attempts a headless ARM system-emulator build. It is an experimental
-host-compatibility check; Android/Bionic differs from desktop Linux, so a
-successful build must be confirmed on the actual device. The headless
-configuration does not provide a graphical display.
+This attempts a native Termux build of both `arm-softmmu` and
+`aarch64-softmmu` system-emulator targets, using the phone CPU as the build
+host. These target names describe the guest CPU architectures supported by
+QEMU; they do not change the host ABI of the executable. On a 32-bit ARM host
+where the AArch64 target backend cannot be built, use::
+
+   QEMU_TARGET_LIST=arm-softmmu bash scripts/ios/build-termux.sh
+
+Android/Bionic differs from desktop Linux, so compilation must be confirmed on
+the actual device. The headless configuration does not provide a graphical
+display. Building `qemu-system-aarch64` does not itself make the iPhone 3GS
+machine bootable; that machine is still a 32-bit ARM guest and its firmware,
+NAND, and peripheral emulation remain incomplete.
 
 Firmware and storage boundaries
 -------------------------------
