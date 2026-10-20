@@ -339,8 +339,8 @@ static void ipod_touch_spi_realize(DeviceState *dev, struct Error **errp)
     sysbus_init_irq(sbd, &s->irq);
     sysbus_init_irq(sbd, &s->cs_line);
     qdev_init_gpio_in_named(dev, apple_spi_cs_set, SSI_GPIO_CS, 1);
-    char name[5];
-    snprintf(name, 5, "spi%d", s->base);
+    char name[16];
+    snprintf(name, sizeof(name), "spi%u", (unsigned)s->base);
     memory_region_init_io(&s->iomem, OBJECT(s), &spi_ops, s, name,
                           SPI_MMIO_SIZE);
     sysbus_init_mmio(sbd, &s->iomem);
