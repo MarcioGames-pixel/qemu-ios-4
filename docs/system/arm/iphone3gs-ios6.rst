@@ -15,9 +15,11 @@ It intentionally does not reuse the iPhone 3G's S5L8900 devices or ARM1176 CPU.
 
 Implemented pieces now include the N88AP CHIPID fuse words, a 24 MHz
 PMGR timebase with two event timers, SPI0, and a 1 MiB SPI-NOR command model
-with an optional writable overlay. The two PMGR timer IRQ outputs are now routed to VIC inputs 6 and 5. The
-three-VIC cascade remains a PL190 approximation and is not yet validated as a
-faithful S5L8920 PL192 implementation; other device IRQs remain unconnected.
+with an optional writable overlay. PMGR timer 0 is routed to AP VIC input 6. Timer 1 belongs to IOP IRQ 5 and is
+intentionally left unconnected until the IOP VIC/core is ported; routing it to
+the AP VIC would be incorrect. The three-VIC cascade remains a PL190
+approximation and is not yet validated as a faithful S5L8920 PL192
+implementation; other device IRQs remain unconnected.
 
 The remaining peripheral range logs as unimplemented. A reusable, file-backed NAND image-store helper has now been ported from the public samhenrigold/qemu-ios project and added to the iPhone 3GS build. It provides geometry-checked page records, spare/OOB bytes, erased-page semantics, per-chip backing files, page read/write/erase operations and flush-on-stop. It is storage infrastructure only: no S5L8920 IOP or H2FMI controller is connected to it yet. The flash controller, genuine BootROM, complete boot-chain loader, display, USB, baseband, and iOS 6 kernel boot path are still missing. QEMU being able to create the machine is
 only a registration/initialization test; it does not prove firmware
