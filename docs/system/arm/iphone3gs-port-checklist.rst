@@ -2,8 +2,10 @@ iPhone 3GS board-port checklist
 ===============================
 
 Status: early iPhone3GS machine is registered. CHIPID, PMGR timebase/event
-timers, SPI0 and a 1 MiB SPI-NOR model are present. Interrupt-controller,
-NAND/IOP, most SoC peripherals, and iOS boot flow remain unimplemented.
+timers, SPI0 and a 1 MiB SPI-NOR model are present. The AP VIC cascade is a
+PL190 approximation; PMGR timer 0 reaches AP IRQ 6, while timer 1 is correctly
+left disconnected until an IOP VIC/core exists. NAND/IOP, most SoC peripherals,
+and iOS boot flow remain unimplemented.
 
 Identity and SoC
 ----------------
