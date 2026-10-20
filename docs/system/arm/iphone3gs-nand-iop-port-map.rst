@@ -53,6 +53,30 @@ Upstream components and dependencies
    - BootROM, iBoot, NAND contents, device tree/boot arguments, and the kernel
      handoff are separate milestones with separate tests.
 
+Create a generic empty NAND store
+---------------------------------
+
+`scripts/ios/create-nand-image-store.py` now creates the generic
+`nand-xor-blank-v2` directory format used by `hw/arm/nand-image.c`. Geometry
+is deliberately required on the command line; the tool does not guess the
+iPhone 3GS flash geometry. Example below is only a tiny synthetic test store,
+not a N88AP profile::
+
+   python3 scripts/ios/create-nand-image-store.py ./nand-test \
+       --chips 1 --page-bytes 2048 --spare-bytes 64 \
+       --pages-per-block 64 --blocks-per-chip 8 --blank ff
+
+The utility creates sparse `cs0.pages` files and `geometry.json`. The
+`--blank ff` choice describes the erased record and XOR-blank encoding means
+an all-zero sparse file reads back as erased flash. Use only geometry and blank
+semantics verified for the actual chip before attaching this store to an
+emulated controller. `--force` replaces existing files and must be used
+carefully because it discards their contents.
+
+The synthetic creation tests run in the iPhone 3GS GitHub Actions workflow.
+They validate the helper's file layout and argument checks only; they do not
+test NAND controller registers, ECC, bad blocks, or firmware boot.
+
 Read-only NAND store inspector
 ------------------------------
 
