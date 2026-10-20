@@ -29,7 +29,7 @@ jobs:
           mkdir -p build
           cd build
           ../configure \
-            --target-list=arm-softmmu \
+            --target-list=arm-softmmu,aarch64-softmmu \
             --enable-tcg \
             --disable-cocoa \
             --disable-gtk \
@@ -42,6 +42,7 @@ jobs:
         run: |
           build/qemu-system-arm -machine help | grep -i iphone3g
           build/qemu-system-arm -machine help | grep -i iphone3gs
+          build/qemu-system-aarch64 --version
           grep -q 'qdev_get_gpio_in(s->vic\[0\], 6)' hw/arm/iphone3gs.c
           grep -q 'qdev_get_gpio_in(s->vic\[0\], 5)' hw/arm/iphone3gs.c
       - name: Initialize board with SPI NOR and writable overlay
