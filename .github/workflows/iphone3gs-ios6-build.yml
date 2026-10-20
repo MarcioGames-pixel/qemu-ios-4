@@ -1,0 +1,70 @@
+name: iPhone 3GS iOS 6 / Linux build smoke test
+
+on:
+  push:
+    branches: [ios6-3gs-termux]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-arm-softmmu:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            bc bison flex gcc g++ git libglib2.0-dev libpixman-1-dev \
+            libfdt-dev libslirp-dev libusb-1.0-0-dev ninja-build pkg-config \
+            python3 python3-venv python3-pip
+      - name: Configure headless ARM system emulator
+        run: |
+          mkdir -p build
+          cd build
+          ../configure \
+            --target-list=arm-softmmu,aarch64-softmmu \
+            --enable-tcg \
+            --disable-cocoa \
+            --disable-gtk \
+            --disable-sdl \
+            --disable-werror \
+            --prefix="$GITHUB_WORKSPACE/build/install"
+      - name: Compile
+        run: ninja -C build
+      - name: Verify iPhone machines are registered separately
+        run: |
+          build/qemu-system-arm -machine help | grep -i iphone3g
+          build/qemu-system-arm -machine help | grep -i iphone3gs
+          build/qemu-system-aarch64 --version
+          grep -q 'qdev_get_gpio_in(s->vic\[0\], 6)' hw/arm/iphone3gs.c
+          ! grep -q 'qdev_get_gpio_in(s->vic\[0\], 5)' hw/arm/iphone3gs.c
+      - name: Initialize board with SPI NOR and writable overlay
+        run: |
+          python3 scripts/ios/create-iphone3gs-nor.py build/nor-test
+          set +e
+          timeout 3s build/qemu-system-arm \
+            -machine "iphone3gs,nor=build/nor-test/nor.bin,nor-rw=build/nor-test/nor-rw.bin" \
+            -S -display none -nodefaults -monitor none -serial none -no-reboot
+          status=$?
+          set -e
+          if [ "$status" -ne 124 ]; then
+            echo "Expected the paused board to remain alive until timeout; exit=$status"
+            exit 1
+          fi
+      - name: Python syntax and firmware/storage tests
+        run: |
+          python3 -m py_compile scripts/ios/inspect-iphone3gs-ios6.py scripts/ios/inspect-iphone3gs-bootchain.py scripts/ios/inspect-iphone3gs-nand.py scripts/ios/create-iphone3gs-nor.py scripts/ios/create-nand-image-store.py
+          python3 -m unittest scripts.ios.tests.test_inspect_iphone3gs_ios6 scripts.ios.tests.test_inspect_iphone3gs_bootchain scripts.ios.tests.test_inspect_iphone3gs_nand scripts.ios.tests.test_create_nand_image_store
+      - name: Check Termux helper shell syntax
+        run: bash -n scripts/ios/build-termux.sh
