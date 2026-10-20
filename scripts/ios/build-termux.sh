@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 ROOT="$(cd -- "$(dirname -- "$0")/../.." && pwd)"
 BUILD_DIR="$ROOT/build-termux"
+# Build both ARM system-emulator frontends by default. On a 32-bit host where
+# the AArch64 target backend is unavailable, set QEMU_TARGET_LIST=arm-softmmu.
+TARGET_LIST="${QEMU_TARGET_LIST:-arm-softmmu,aarch64-softmmu}"
 
 if [ ! -d "$ROOT/.git" ]; then
   echo "Run this from a cloned qemu-ios-4 repository." >&2
@@ -47,7 +50,11 @@ cd "$BUILD_DIR"
 ninja
 "$BUILD_DIR/qemu-system-arm" --version
 "$BUILD_DIR/qemu-system-arm" -machine help | grep -i iphone3g
+if [ -x "$BUILD_DIR/qemu-system-aarch64" ]; then
+  "$BUILD_DIR/qemu-system-aarch64" --version
+fi
 echo
-echo "Build succeeded. This configuration is headless (no SDL/Cocoa display)."
+echo "Build succeeded for target list: $TARGET_LIST"
+echo "This configuration is headless (no SDL/Cocoa display)."
 echo "It does not make the iPhone 3GS/iOS 6 machine supported; the existing"
 echo "iphone3g machine still targets iPhone 3G/N82AP and iOS 4."
