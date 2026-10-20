@@ -38,7 +38,7 @@ mkdir -p "$BUILD_DIR"
 cd "$BUILD_DIR"
 
 "$ROOT/configure" \
-  --target-list=arm-softmmu \
+  --target-list="$TARGET_LIST" \
   --enable-tcg \
   --disable-cocoa \
   --disable-gtk \
@@ -56,5 +56,5 @@ fi
 echo
 echo "Build succeeded for target list: $TARGET_LIST"
 echo "This configuration is headless (no SDL/Cocoa display)."
-echo "It does not make the iPhone 3GS/iOS 6 machine supported; the existing"
-echo "iphone3g machine still targets iPhone 3G/N82AP and iOS 4."
+echo "A successful build only confirms compilation, not iPhone 3GS boot support."
+echo "The iPhone 3GS BootROM/NAND/IOP/boot-chain implementation remains incomplete."
